@@ -1,5 +1,33 @@
 # SmartFire: The Smart Home Fireplace Controller
 
+## Update from JoelB
+
+Original git repo: https://github.com/johnellinwood/smartfire
+
+Source for code for calculating C and D: https://github.com/merbanan/rtl_433/issues/1905
+
+  - Plug in R820T SDT (or equivalent) and place antenna near Proflame 2 remote
+  - Install rtl_433
+  - Run this command: rtl_433 -f 315M -g 40 -R 207
+  - Press buttons on the remote and confirm you see the information being captured and decoded
+    - Example output:
+      ![example rtl_433 output](https://raw.githubusercontent.com/JoelB/smartfire/main/example-proflame2-rtl_433_output.png)
+  - The 'Id' field is the serial number in hex
+  - Calculate the C and D values based on the Cmd1/Err1 and Cmd2/Err2 values:
+    - Install (e.g. dotnet-sdk-8.0 on Fedora) - NOTE: I recommend using toolbox to create a temporary dev container
+    - cd calculateCandD
+    - Edit calc.cs to add the Cmd1/Err1 and Cmd2/Err2 values
+    - dotnet run
+    - Record values. The first nibble is the C value, the second is the D value
+  - Update test.py with the values for serial, ecc1_{C,D} and ecc2_{C,D}
+  - (Optional) switch to a venv with ''source smartfire_venv/bin/activate''
+  - pip3 install -r requirements.txt
+  - Plug in the Yardstick One for transmission
+  - python3 test.py <on/off> to test if the fireplace turns on/off
+
+
+
+
 ## Overview
 The Sit Group's Proflame 2 control system is used in most modern natural gas and propane indoor residential fireplaces,
 like Jotul, Mendota, Regency, Empire, Lennox, and others. It uses 
