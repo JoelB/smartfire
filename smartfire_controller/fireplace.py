@@ -14,16 +14,16 @@ import sys
 from rflib import RfCat, MOD_ASK_OOK
 from bitstring import Bits, BitArray
 
-# Serial number words, including padding bit at the end
-DEFAULT_SERIAL = ['001001011', '011110100', '000000100']
-
-
 class Fireplace(object):
     """Model for the fireplace state and controls"""
 
-    def __init__(self, serial=None):
+    def __init__(self, serial, ecc1_C, ecc1_D, ecc2_C, ecc2_D):
         self._radio = None
-        self._serial = DEFAULT_SERIAL if serial is None else serial
+        self._serial = self.parse_serial(serial)
+        self._ecc1_C = ecc1_C
+        self._ecc1_D = ecc1_D
+        self._ecc2_C = ecc2_C
+        self._ecc2_D = ecc2_D
         self._pilot = True
         self._light = 0
         self._thermostat = False
@@ -32,6 +32,21 @@ class Fireplace(object):
         self._fan = 0
         self._aux = False
         self._flame = 0
+
+    def parse_serial(self, serial):
+      # Extract the three 9-bit words
+      word1 = (serial >> 16) & 0xFF
+      word2 = (serial >> 8)  & 0xFF
+      word3 = serial         & 0xFF
+
+      # Convert to binary, reverse, then append
+      serial_transformed = [
+          (bin(word1) + '1')[2:].zfill(9),
+          (bin(word2) + '0')[2:].zfill(9),
+          (bin(word3) + '0')[2:].zfill(9)
+      ]
+
+      return(serial_transformed)
 
     @property
     def radio(self):
@@ -46,6 +61,22 @@ class Fireplace(object):
     @property
     def serial(self):
         return self._serial
+
+    @property
+    def ecc1_C(self):
+        return self._ecc1_C
+
+    @property
+    def ecc1_D(self):
+        return self._ecc1_D
+
+    @property
+    def ecc2_C(self):
+        return self._ecc2_C
+
+    @property
+    def ecc2_D(self):
+        return self._ecc2_D
 
     @property
     def pilot(self):
@@ -113,7 +144,7 @@ class Fireplace(object):
 
     @property
     def state(self):
-        return {'serial': self.serial, 'pilot': self.pilot, 'light': self.light, 'therostat': self.thermostat,
+        return {'serial': self.serial, 'pilot': self.pilot, 'light': self.light, 'thermostat': self.thermostat,
                 'power': self.power,
                 'front': self.front, 'fan': self.fan, 'aux': self.aux, 'flame': self.flame}
 
@@ -188,17 +219,17 @@ class Fireplace(object):
 
         # calculate the first ecc word
         ecc1 = BitArray()
-        ecc1_high = (0xD ^ cmd1[0:4].uint ^ (cmd1[0:4].uint << 1) ^ (cmd1[4:8].uint << 1)) & 0xF
-        ecc1_low = cmd1[0:4].uint ^ cmd1[4:8].uint
+        ecc1_high = (self.ecc1_C ^ cmd1[0:4].uint ^ (cmd1[0:4].uint << 1) ^ (cmd1[4:8].uint << 1)) & 0xF
+        ecc1_low = self.ecc1_D ^ cmd1[0:4].uint ^ cmd1[4:8].uint
         ecc1.append(Bits(uint=ecc1_high, length=4))  # 4 high ecc bits
         ecc1.append(Bits(uint=ecc1_low, length=4))  # 4 low ecc bits
         ecc1.append('0x0')  # 1 zero padding bit
         packet_words.append(ecc1)
-
+        
         # calculate the second ecc word
         ecc2 = BitArray()
-        ecc2_high = (cmd2[0:4].uint ^ (cmd2[0:4].uint << 1) ^ (cmd2[4:8].uint << 1)) & 0xF
-        ecc2_low = cmd2[0:4].uint ^ cmd2[4:8].uint ^ 0x7
+        ecc2_high = (self.ecc2_C ^ cmd2[0:4].uint ^ (cmd2[0:4].uint << 1) ^ (cmd2[4:8].uint << 1)) & 0xF
+        ecc2_low = self.ecc2_D ^ cmd2[0:4].uint ^ cmd2[4:8].uint
         ecc2.append(Bits(uint=ecc2_high, length=4))  # 4 high ecc bits
         ecc2.append(Bits(uint=ecc2_low, length=4))  # 4 low ecc bits
         ecc2.append('0x0')  # 1 zero padding bit
