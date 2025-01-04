@@ -1,3 +1,8 @@
+// Full credit to jbruening from this Github issue:
+// https://github.com/merbanan/rtl_433/issues/1905#issuecomment-1019601981
+
+var foundval = "";
+
 var X = new Func<byte, byte, byte>((cd, cmd) => {
     var a = cmd >> 4;
     var b = cmd & 0b0001111;
@@ -22,7 +27,7 @@ var findCandD = new Action<byte, byte>((cmd, r) =>
     {
         var ec = ecc(i, cmd);
         if (ec == r)
-            Console.WriteLine($"{i:X2}");
+            foundval=$"{i:X2}";
     }
 });
 
@@ -32,9 +37,9 @@ byte Err1 = 0xB3;
 byte Cmd2 = 0x66;
 byte Err2 = 0xE2;
 
-Console.WriteLine("Err1:");
 findCandD(Cmd1,Err1);
+Console.WriteLine("Err1: 0x" + foundval);
 
-Console.WriteLine("Err2:");
 findCandD(Cmd2,Err2);
+Console.WriteLine("Err2: 0x" + foundval);
 
